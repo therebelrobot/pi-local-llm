@@ -1,0 +1,38 @@
+services:
+  llama-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llama-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    volumes:
+      # Persist downloaded models across container rebuilds
+      - models:/models
+    environment:
+      # -- Model config --
+      MODEL_URL: "${MODEL_URL:-https://huggingface.co/bartowski/Qwen_Qwen3-4B-GGUF/resolve/main/Qwen_Qwen3-4B-Q4_K_M.gguf}"
+      MODEL_FILENAME: "${MODEL_FILENAME:-Qwen3-4B-Q4_K_M.gguf}"
+
+      # -- Server config --
+      PORT: "${PORT:-8080}"
+      THREADS: "${THREADS:-4}"
+      CTX_SIZE: "${CTX_SIZE:-4096}"
+
+      # -- KV cache quantization (saves RAM on Pi 4) --
+      # Use q8_0/q4_0 to cut KV cache memory in half+
+      # or keep f16/f16 for best tool-calling accuracy
+      KV_CACHE_K: "${KV_CACHE_K:-q8_0}"
+      KV_CACHE_V: "${KV_CACHE_V:-q4_0}"
+
+      # -- Pass any extra llama-server flags --
+      EXTRA_ARGS: "${EXTRA_ARGS:-}"
+
+    # Pi 4 has 4 cores; don't let Docker steal from the OS
+    cpus: 3.5
+    # Leave ~1GB for OS + Docker overhead
+    mem_limit: "${MEM_LIMIT:-6g}"
+
+volumes:
+  models:
